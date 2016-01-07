@@ -39,25 +39,31 @@ Service id: com.hubrick.services.kafka-consumer
 
 ```JSON
     {
+      "address" : "message-from-kafka",
       "groupId" : "groupId",
       "kafkaTopic" : "kafka-topic",
-      "vertxAddress" : "message-from-kafka",
-      "offsetReset" : "largest",
       "zk" : "host:port",
+      "offsetReset" : "largest",
       "maxUnacknowledged" : 100,
       "maxUncommitted" : 1000,
-      "ackTimeoutMinutes" : 10
+      "ackTimeoutSeconds" : 600,
+      "maxRetries" : 100,
+      "initialRetryDelaySeconds" : 1,
+      "maxRetryDelaySeconds" : 10
     }
 ```
 
-* `groupId`: Kafka Group Id to use for the Kafka consumer
-* `kafkaTopic`: The Kafka topic to subscribe to
-* `vertxAddress`: Vert.x event bus address the Kafka messages are relayed to
-* `offsetReset`: What to do when there is no initial offset in ZooKeeper or if an offset is out of range
-* `zk`: Zookeeper host and port 
-* `maxUnacknowledged`: how many messages from Kafka can be unacknowledged before the module waits for all missing acknowledgements, effectively limiting the amount of messages that are on the Vertx Event Bus at any given time.
-* `maxUncommitted`: max offset difference before a commit cycle is run. A commit cycle waits for all unacknowledged messages and then commits the offset to Kafka. Note that when you read from multiple partitions the offset is not continuous and therefore every partition switch causes a commit cycle. For better performance you should start an instance of the module per partition.
-* `ackTimeoutMinutes`: the time to wait for all outstanding acknowledgements during a commit cycle. This will just lead to a log message saying how many ACKs are still missing, as the module will wait forever for ACKs in order to achieve at least once semantics.
+* `address`: Vert.x event bus address the Kafka messages are relayed to (Required)
+* `groupId`: Kafka Group Id to use for the Kafka consumer (Required)
+* `kafkaTopic`: The Kafka topic to subscribe to (Required)
+* `zk`: Zookeeper host and port (Required)
+* `offsetReset`: What to do when there is no initial offset in ZooKeeper or if an offset is out of range (Default: largest)
+* `maxUnacknowledged`: how many messages from Kafka can be unacknowledged before the module waits for all missing acknowledgements, effectively limiting the amount of messages that are on the Vertx Event Bus at any given time. (Default: 100)
+* `maxUncommitted`: max offset difference before a commit cycle is run. A commit cycle waits for all unacknowledged messages and then commits the offset to Kafka. Note that when you read from multiple partitions the offset is not continuous and therefore every partition switch causes a commit cycle. For better performance you should start an instance of the module per partition. (Default: 1000)
+* `ackTimeoutSeconds`: the time to wait for all outstanding acknowledgements during a commit cycle. This will just lead to a log message saying how many ACKs are still missing, as the module will wait forever for ACKs in order to achieve at least once semantics. (Default: 600)
+* `maxRetries`: Max number of retries until it consider the message failed (Default: infinite)
+* `initialRetryDelaySeconds`: Initial retry delay (Default: 1)
+* `maxRetryDelaySeconds`: Max retry delay since the retry delay is increasing (Default: 10)
 
 ### Example:
 
@@ -86,7 +92,7 @@ Service id: com.hubrick.services.kafka-producer
     }
 ```
 
-* `address`: Event bus address (Required)
+* `address`: Vert.x event bus address (Required)
 * `brokerList`: The Kafka broker list (Default: localhost:9092)
 * `requiredAcks`: The minimum number of required acks to acknowledge the sending (Default: 1)
 * `defaultTopic`: Topic used if no other specified during sending (Default: null)
