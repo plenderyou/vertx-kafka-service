@@ -1,0 +1,131 @@
+/**
+ * Copyright (C) 2016 Etaia AS (oss@hubrick.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.hubrick.vertx.kafka.consumer;
+
+/**
+ * Configuration Options for the Kafka Consumer.
+ *
+ * @author Marcus Thiesen
+ * @since 1.0.0
+ */
+class KafkaConsumerConfiguration {
+
+    public static final String KEY_GROUP_ID = "groupId";
+    public static final String KEY_KAFKA_TOPIC = "kafkaTopic";
+    public static final String KEY_VERTX_ADDRESS = "vertxAddress";
+    public static final String KEY_ZOOKEEPER = "zk";
+    public static final String KEY_OFFSET_RESET = "offsetReset";
+    public static final String KEY_ZOOKEPER_TIMEOUT_MS = "zookeperTimeout";
+    public static final String KEY_MAX_UNACKNOWLEDGED = "maxUnacknowledged";
+    public static final String KEY_MAX_UNCOMMITTED_OFFSETS = "maxUncommitted";
+    public static final String KEY_ACK_TIMEOUT_MINUTES = "ackTimeoutMinutes";
+    public static final String KEY_COMMIT_TIMEOUT_MS = "commitTimeoutMs";
+
+    private final String groupId;
+    private final String kafkaTopic;
+    private final String vertxAddress;
+    private final String zookeeper;
+    private final String offsetReset;
+    private final int zookeeperTimeout;
+    private final int maxUnacknowledged;
+    private final long maxUncommitedOffsets;
+    private final long ackTimeoutMinutes;
+    private final long commitTimeoutMs;
+
+    private KafkaConsumerConfiguration(final String groupId,
+                                       final String kafkaTopic,
+                                       final String vertxTopic,
+                                       final String zookeeper,
+                                       final String offsetReset,
+                                       final int zookeeperTimeout,
+                                       final int maxUnacknowledged,
+                                       final long maxUncommittedOffset,
+                                       final long ackTimeoutMinutes,
+                                       final long commitTimeoutMs) {
+        this.groupId = groupId;
+        this.kafkaTopic = kafkaTopic;
+        this.vertxAddress = vertxTopic;
+        this.zookeeper = zookeeper;
+        this.offsetReset = offsetReset;
+        this.zookeeperTimeout = zookeeperTimeout;
+        this.maxUnacknowledged = maxUnacknowledged;
+        this.maxUncommitedOffsets = maxUncommittedOffset;
+        this.ackTimeoutMinutes = ackTimeoutMinutes;
+        this.commitTimeoutMs = commitTimeoutMs;
+    }
+
+    public static KafkaConsumerConfiguration create(final String groupId,
+                                            final String kafkaTopic,
+                                            final String vertxTopic,
+                                            final String zookeeper,
+                                            final String offsetReset,
+                                            final int zookeeperTimeout,
+                                            final int maxUnacknowledged,
+                                            final long maxUncommittedOffsets,
+                                            final long ackTimeoutMinutes,
+                                            final long commitTimeoutMs) {
+        return new KafkaConsumerConfiguration(groupId,
+                kafkaTopic,
+                vertxTopic,
+                zookeeper,
+                offsetReset,
+                zookeeperTimeout,
+                maxUnacknowledged,
+                maxUncommittedOffsets,
+                ackTimeoutMinutes,
+                commitTimeoutMs);
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public String getKafkaTopic() {
+        return kafkaTopic;
+    }
+
+    public String getVertxAddress() {
+        return vertxAddress;
+    }
+
+    public String getZookeeper() {
+        return zookeeper;
+    }
+
+    public String getOffsetReset() {
+        return offsetReset;
+    }
+
+    public int getZookeeperTimeout() {
+        return zookeeperTimeout;
+    }
+
+    public int getMaxUnacknowledged() {
+        return maxUnacknowledged;
+    }
+
+    public long getMaxUncommitedOffsets() {
+        return maxUncommitedOffsets;
+    }
+
+    public long getAckTimeoutMinutes() {
+        return ackTimeoutMinutes;
+    }
+
+    public long getCommitTimeoutMs() {
+        return commitTimeoutMs;
+    }
+}

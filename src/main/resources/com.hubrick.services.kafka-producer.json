@@ -1,0 +1,6 @@
+{
+    "main": "com.hubrick.vertx.kafka.producer.KafkaProducerServiceVerticle",
+    "options": {
+        "worker": true
+    }
+}
