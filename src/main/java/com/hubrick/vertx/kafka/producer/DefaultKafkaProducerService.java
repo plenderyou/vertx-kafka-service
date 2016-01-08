@@ -27,7 +27,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
-import kafka.common.FailedToSendMessageException;
 import kafka.javaapi.producer.Producer;
 import kafka.producer.KeyedMessage;
 import kafka.producer.ProducerConfig;
@@ -43,16 +42,16 @@ import java.util.Properties;
  * @author Emir Dizdarevic
  * @since 1.0.0
  */
-public class KafkaProducerServiceImpl implements KafkaProducerService {
+public class DefaultKafkaProducerService implements KafkaProducerService {
 
-    private static final Logger log = LoggerFactory.getLogger(KafkaProducerServiceImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(DefaultKafkaProducerService.class);
 
     private final KafkaProducerConfiguration kafkaProducerConfiguration;
 
     private Map<MessageSerializerType, Producer> producers = new HashMap<>();
     private StatsDClient statsDClient;
 
-    public KafkaProducerServiceImpl(KafkaProducerConfiguration kafkaProducerConfiguration) {
+    public DefaultKafkaProducerService(KafkaProducerConfiguration kafkaProducerConfiguration) {
         this.kafkaProducerConfiguration = kafkaProducerConfiguration;
     }
 
