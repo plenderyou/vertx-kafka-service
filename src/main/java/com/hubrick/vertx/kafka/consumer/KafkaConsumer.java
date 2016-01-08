@@ -17,7 +17,11 @@ package com.hubrick.vertx.kafka.consumer;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
+import com.google.common.math.IntMath;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.hubrick.vertx.kafka.consumer.config.KafkaConsumerConfiguration;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import kafka.consumer.Consumer;
 import kafka.consumer.ConsumerConfig;
 import kafka.consumer.KafkaStream;
@@ -45,12 +49,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Marcus Thiesen
  * @since 1.0.0
  */
-class VertxKafkaConsumer {
+class KafkaConsumer {
 
-    private final static Logger LOG = LoggerFactory.getLogger(VertxKafkaConsumer.class);
+    private final static Logger LOG = LoggerFactory.getLogger(KafkaConsumer.class);
 
     private final static ThreadFactory FACTORY = new ThreadFactoryBuilder().setNameFormat("kafka-consumer-thread-%d").setDaemon(true).build();
 
+    private final Vertx vertx;
     private final ConsumerConnector connector;
     private final KafkaConsumerConfiguration configuration;
     private final KafkaConsumerHandler handler;
@@ -67,17 +72,18 @@ class VertxKafkaConsumer {
     private final AtomicLong currentPartition = new AtomicLong(-1);
     private final AtomicLong lastCommitTime = new AtomicLong(System.currentTimeMillis());
 
-    public VertxKafkaConsumer(ConsumerConnector connector, KafkaConsumerConfiguration configuration, KafkaConsumerHandler handler) {
+    public KafkaConsumer(Vertx vertx, ConsumerConnector connector, KafkaConsumerConfiguration configuration, KafkaConsumerHandler handler) {
+        this.vertx = vertx;
         this.connector = connector;
         this.configuration = configuration;
         this.handler = handler;
     }
 
-    public static VertxKafkaConsumer create(final KafkaConsumerConfiguration configuration, final KafkaConsumerHandler handler) {
+    public static KafkaConsumer create(final Vertx vertx, final KafkaConsumerConfiguration configuration, final KafkaConsumerHandler handler) {
         final Properties properties = createProperties(configuration);
         final ConsumerConfig config = new ConsumerConfig(properties);
         final ConsumerConnector connector = Consumer.createJavaConsumerConnector(config);
-        return new VertxKafkaConsumer(connector, configuration, handler);
+        return new KafkaConsumer(vertx, connector, configuration, handler);
     }
 
     protected static Properties createProperties(KafkaConsumerConfiguration configuration) {
@@ -120,12 +126,7 @@ class VertxKafkaConsumer {
             lastCommittedOffset.compareAndSet(0, offset);
             currentPartition.compareAndSet(-1, partition);
 
-            final String jsonString = msg.message();
-
-            handler.handle(configuration.getVertxAddress(), jsonString, () -> {
-                unacknowledgedOffsets.remove(offset);
-                phaser.arriveAndDeregister();
-            });
+            handle(msg.message(), offset, configuration.getMaxRetries(), configuration.getInitialRetryDelaySeconds());
 
             if (unacknowledgedOffsets.size() >= configuration.getMaxUnacknowledged()
                     || partititionChanged(partition)
@@ -141,6 +142,28 @@ class VertxKafkaConsumer {
         }
     }
 
+    private void handle(String msg, Long offset, int tries, int delaySeconds) {
+        final Future<Void> futureResult = Future.future();
+        futureResult.setHandler(result -> {
+            if(result.succeeded()) {
+                unacknowledgedOffsets.remove(offset);
+                phaser.arriveAndDeregister();
+            } else {
+                final int nextDelaySeconds = computeNextDelay(delaySeconds);
+                if (tries > 0) {
+                    LOG.error("Exception occurred during kafka message processing, will retry in {} seconds: {}", delaySeconds, msg, result.cause());
+                    final int nextTry = tries - 1;
+                    vertx.setTimer(delaySeconds * 1000, event -> handle(msg, offset, nextTry, nextDelaySeconds));
+                } else {
+                    LOG.error("Exception occurred during kafka message processing. Max number of retries reached. Skipping message: {}", msg, result.cause());
+                    unacknowledgedOffsets.remove(offset);
+                    phaser.arriveAndDeregister();
+                }
+            }
+        });
+        handler.handle(msg, futureResult);
+    }
+
     private boolean commitTimeoutReached() {
         return System.currentTimeMillis() - lastCommitTime.get() >= configuration.getCommitTimeoutMs();
     }
@@ -154,16 +177,24 @@ class VertxKafkaConsumer {
         return false;
     }
 
+    private int computeNextDelay(int delaySeconds) {
+        try {
+            return Math.min(IntMath.checkedMultiply(delaySeconds, 2), configuration.getMaxRetryDelaySeconds());
+        } catch (ArithmeticException e) {
+            return configuration.getMaxRetryDelaySeconds();
+        }
+    }
+
     private boolean waitForAcks(int phase) {
         try {
-            phaser.awaitAdvanceInterruptibly(phase, configuration.getAckTimeoutMinutes(), TimeUnit.MINUTES);
+            phaser.awaitAdvanceInterruptibly(phase, configuration.getAckTimeoutSeconds(), TimeUnit.SECONDS);
             return true;
         } catch (InterruptedException e) {
             LOG.error("Interrupted while waiting for ACKs", e);
             return false;
         } catch (TimeoutException e) {
-            LOG.error("Waited for {} ACKs for longer than {} minutes, not making any progress ({}/{})", new Object[]{
-                    Integer.valueOf(unacknowledgedOffsets.size()), Long.valueOf(configuration.getAckTimeoutMinutes()),
+            LOG.error("Waited for {} ACKs for longer than {} seconds, not making any progress ({}/{})", new Object[]{
+                    Integer.valueOf(unacknowledgedOffsets.size()), Long.valueOf(configuration.getAckTimeoutSeconds()),
                     Integer.valueOf(phase), Integer.valueOf(phaser.getPhase())});
             return waitForAcks(phase);
         }

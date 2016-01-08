@@ -16,6 +16,8 @@
 package com.hubrick.vertx.kafka.consumer;
 
 
+import io.vertx.core.Future;
+
 /**
  * Callback interface for internal use.
  *
@@ -24,7 +26,5 @@ package com.hubrick.vertx.kafka.consumer;
  */
 @FunctionalInterface
 interface KafkaConsumerHandler {
-
-    void handle(final String vertxAddress, final String message, final Runnable ack);
-
+    void handle(final String message, final Future<Void> futureResult);
 }

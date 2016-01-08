@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.hubrick.vertx.kafka.consumer;
+package com.hubrick.vertx.kafka.consumer.config;
 
 /**
  * Configuration Options for the Kafka Consumer.
@@ -21,72 +21,71 @@ package com.hubrick.vertx.kafka.consumer;
  * @author Marcus Thiesen
  * @since 1.0.0
  */
-class KafkaConsumerConfiguration {
-
-    public static final String KEY_GROUP_ID = "groupId";
-    public static final String KEY_KAFKA_TOPIC = "kafkaTopic";
-    public static final String KEY_VERTX_ADDRESS = "vertxAddress";
-    public static final String KEY_ZOOKEEPER = "zk";
-    public static final String KEY_OFFSET_RESET = "offsetReset";
-    public static final String KEY_ZOOKEPER_TIMEOUT_MS = "zookeperTimeout";
-    public static final String KEY_MAX_UNACKNOWLEDGED = "maxUnacknowledged";
-    public static final String KEY_MAX_UNCOMMITTED_OFFSETS = "maxUncommitted";
-    public static final String KEY_ACK_TIMEOUT_MINUTES = "ackTimeoutMinutes";
-    public static final String KEY_COMMIT_TIMEOUT_MS = "commitTimeoutMs";
+public class KafkaConsumerConfiguration {
 
     private final String groupId;
     private final String kafkaTopic;
-    private final String vertxAddress;
     private final String zookeeper;
     private final String offsetReset;
     private final int zookeeperTimeout;
     private final int maxUnacknowledged;
     private final long maxUncommitedOffsets;
-    private final long ackTimeoutMinutes;
+    private final long ackTimeoutSeconds;
     private final long commitTimeoutMs;
+    private final int maxRetries;
+    private final int initialRetryDelaySeconds;
+    private final int maxRetryDelaySeconds;
 
     private KafkaConsumerConfiguration(final String groupId,
                                        final String kafkaTopic,
-                                       final String vertxTopic,
                                        final String zookeeper,
                                        final String offsetReset,
                                        final int zookeeperTimeout,
                                        final int maxUnacknowledged,
                                        final long maxUncommittedOffset,
-                                       final long ackTimeoutMinutes,
-                                       final long commitTimeoutMs) {
+                                       final long ackTimeoutSeconds,
+                                       final long commitTimeoutMs,
+                                       final int maxRetries,
+                                       final int initialRetryDelaySeconds,
+                                       final int maxRetryDelaySeconds) {
         this.groupId = groupId;
         this.kafkaTopic = kafkaTopic;
-        this.vertxAddress = vertxTopic;
         this.zookeeper = zookeeper;
         this.offsetReset = offsetReset;
         this.zookeeperTimeout = zookeeperTimeout;
         this.maxUnacknowledged = maxUnacknowledged;
         this.maxUncommitedOffsets = maxUncommittedOffset;
-        this.ackTimeoutMinutes = ackTimeoutMinutes;
+        this.ackTimeoutSeconds = ackTimeoutSeconds;
         this.commitTimeoutMs = commitTimeoutMs;
+        this.maxRetries = maxRetries;
+        this.initialRetryDelaySeconds = initialRetryDelaySeconds;
+        this.maxRetryDelaySeconds = maxRetryDelaySeconds;
     }
 
     public static KafkaConsumerConfiguration create(final String groupId,
-                                            final String kafkaTopic,
-                                            final String vertxTopic,
-                                            final String zookeeper,
-                                            final String offsetReset,
-                                            final int zookeeperTimeout,
-                                            final int maxUnacknowledged,
-                                            final long maxUncommittedOffsets,
-                                            final long ackTimeoutMinutes,
-                                            final long commitTimeoutMs) {
+                                                    final String kafkaTopic,
+                                                    final String zookeeper,
+                                                    final String offsetReset,
+                                                    final int zookeeperTimeout,
+                                                    final int maxUnacknowledged,
+                                                    final long maxUncommittedOffsets,
+                                                    final long ackTimeoutSeconds,
+                                                    final long commitTimeoutMs,
+                                                    final int maxRetries,
+                                                    final int initialRetryDelaySeconds,
+                                                    final int maxRetryDelaySeconds) {
         return new KafkaConsumerConfiguration(groupId,
                 kafkaTopic,
-                vertxTopic,
                 zookeeper,
                 offsetReset,
                 zookeeperTimeout,
                 maxUnacknowledged,
                 maxUncommittedOffsets,
-                ackTimeoutMinutes,
-                commitTimeoutMs);
+                ackTimeoutSeconds,
+                commitTimeoutMs,
+                maxRetries,
+                initialRetryDelaySeconds,
+                maxRetryDelaySeconds);
     }
 
     public String getGroupId() {
@@ -95,10 +94,6 @@ class KafkaConsumerConfiguration {
 
     public String getKafkaTopic() {
         return kafkaTopic;
-    }
-
-    public String getVertxAddress() {
-        return vertxAddress;
     }
 
     public String getZookeeper() {
@@ -121,11 +116,23 @@ class KafkaConsumerConfiguration {
         return maxUncommitedOffsets;
     }
 
-    public long getAckTimeoutMinutes() {
-        return ackTimeoutMinutes;
+    public long getAckTimeoutSeconds() {
+        return ackTimeoutSeconds;
     }
 
     public long getCommitTimeoutMs() {
         return commitTimeoutMs;
+    }
+
+    public int getMaxRetryDelaySeconds() {
+        return maxRetryDelaySeconds;
+    }
+
+    public int getInitialRetryDelaySeconds() {
+        return initialRetryDelaySeconds;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
     }
 }
