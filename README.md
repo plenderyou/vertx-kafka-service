@@ -17,7 +17,7 @@ This service allows to receive events published by other Vert.x verticles and se
 
 ## Compatibility
 - Java 8+
-- Vert.x 3.x.x
+- Vert.x 3.1.0 >=
 
 ## Dependencies
 
