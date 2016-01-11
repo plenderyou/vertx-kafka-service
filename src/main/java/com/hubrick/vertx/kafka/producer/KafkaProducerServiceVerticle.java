@@ -18,7 +18,6 @@ package com.hubrick.vertx.kafka.producer;
 import com.google.common.base.Strings;
 import com.hubrick.vertx.kafka.producer.config.KafkaProducerConfiguration;
 import com.hubrick.vertx.kafka.producer.config.StatsDConfiguration;
-import com.hubrick.vertx.kafka.producer.property.KafkaProducerProperties;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonObject;
 import io.vertx.serviceproxy.ProxyHelper;
@@ -77,7 +76,7 @@ public class KafkaProducerServiceVerticle extends AbstractVerticle {
         );
         kafkaProducerConfiguration.setStatsDConfiguration(statsDConfiguration);
 
-        kafkaProducerService = new KafkaProducerServiceImpl(kafkaProducerConfiguration);
+        kafkaProducerService = new DefaultKafkaProducerService(kafkaProducerConfiguration);
         ProxyHelper.registerService(KafkaProducerService.class, vertx, kafkaProducerService, address);
 
         kafkaProducerService.start();

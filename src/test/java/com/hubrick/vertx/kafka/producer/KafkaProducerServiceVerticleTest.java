@@ -67,7 +67,7 @@ public class KafkaProducerServiceVerticleTest {
     private StatsDClient statsDClient;
 
     @InjectMocks
-    private KafkaProducerServiceImpl kafkaMessageProducer = new KafkaProducerServiceImpl(kafkaProducerConfiguration);
+    private DefaultKafkaProducerService kafkaMessageProducer = new DefaultKafkaProducerService(kafkaProducerConfiguration);
 
     @Before
     public void setUp() throws Exception {
