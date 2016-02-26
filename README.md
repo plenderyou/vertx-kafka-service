@@ -80,10 +80,10 @@ Service id: com.hubrick.services.kafka-producer
 
 ```JSON
     {
-      "address" : "eventbus-address",           
+      "address" : "eventbus-address",        
+      "defaultTopic" : "default-topic", 
       "brokerList" : "localhost:9092",          
-      "requiredAcks" : 1,                       
-      "defaultTopic" : "default-topic",         
+      "requiredAcks" : 1,
       "statsD" : {
         "prefix" : "vertx.kafka",                
         "host" : "localhost",                   
@@ -93,9 +93,9 @@ Service id: com.hubrick.services.kafka-producer
 ```
 
 * `address`: Vert.x event bus address (Required)
+* `defaultTopic`: Topic used if no other specified during sending (Required)
 * `brokerList`: The Kafka broker list (Default: localhost:9092)
 * `requiredAcks`: The minimum number of required acks to acknowledge the sending (Default: 1)
-* `defaultTopic`: Topic used if no other specified during sending (Default: null)
 * `statsD.prefix`: statsD prefix (Default: vertx.kafka)
 * `statsD.host`: statsD host (Default: localhost)
 * `statsD.port`: statsD port (Default: 8125)
