@@ -104,7 +104,7 @@ Service id: com.hubrick.services.kafka-producer
 
 ```Java
     final KafkaProducerService kafkaProducerService = KafkaProducerService.createProxy(vertx, "eventbus-address");
-    kafkaProducerService.sendString(new StringKafkaMessage("your message goes here", "topic"), "optional-partition"), response -> {
+    kafkaProducerService.sendString(new StringKafkaMessage("your message goes here", "optional-partition"), new KafkaOptions().setTopic("topic")), response -> {
         if (response.succeeded()) {
             System.out.println("OK");
         } else {
