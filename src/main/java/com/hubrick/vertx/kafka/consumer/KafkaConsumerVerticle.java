@@ -20,6 +20,7 @@ import com.hubrick.vertx.kafka.consumer.config.KafkaConsumerConfiguration;
 import com.hubrick.vertx.kafka.consumer.property.KafkaConsumerProperties;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -53,7 +54,8 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
                 config.getLong(KafkaConsumerProperties.KEY_COMMIT_TIMEOUT_MS, 5 * 60 * 1000L),
                 config.getInteger(KafkaConsumerProperties.KEY_MAX_RETRIES, Integer.MAX_VALUE),
                 config.getInteger(KafkaConsumerProperties.KEY_INITIAL_RETRY_DELAY_SECONDS, 1),
-                config.getInteger(KafkaConsumerProperties.KEY_MAX_RETRY_DELAY_SECONDS, 10)
+                config.getInteger(KafkaConsumerProperties.KEY_MAX_RETRY_DELAY_SECONDS, 10),
+                config.getLong(KafkaConsumerProperties.EVENT_BUS_SEND_TIMEOUT, DeliveryOptions.DEFAULT_TIMEOUT)
         );
 
         consumer = KafkaConsumer.create(vertx, configuration, this::handler);
@@ -69,8 +71,11 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
     }
 
     private void handler(final String message, final Future<Void> futureResult) {
+        final DeliveryOptions options = new DeliveryOptions();
+        options.setSendTimeout(configuration.getEventBusSendTimeout());
+
         vertx.eventBus().send(vertxAddress, message, (result) -> {
-            if(result.succeeded()) {
+            if (result.succeeded()) {
                 futureResult.complete();
             } else {
                 futureResult.fail(result.cause());
