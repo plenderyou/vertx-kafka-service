@@ -25,11 +25,19 @@ public final class KafkaProducerProperties {
     private KafkaProducerProperties() {}
 
     public static final String ADDRESS = "address";
-    public static final String BROKER_LIST = "brokerList";
-    public static final String REQUEST_ACKS = "requiredAcks";
+    public static final String BOOTSTRAP_SERVERS = "bootstrapServers";
+    public static final String ACKS = "acks";
     public static final String DEFAULT_TOPIC = "defaultTopic";
+    public static final String RETRIES = "retries";
+    public static final String REQUEST_TIMEOUT_MS = "requestTimeoutMs";
+    public static final String MAX_BLOCK_MS = "maxBlockMs";
     public static final String STATSD = "statsD";
 
-    public static final String BROKER_LIST_DEFAULT = "localhost:9092";
-    public static final int REQUEST_ACKS_DEFAULT = 1;
+    public static final String BOOTSTRAP_SERVERS_DEFAULT = "localhost:9092";
+    public static final String ACKS_DEFAULT = "1";
+
+    public static final int RETRIES_DEFAULT = 0;
+    public static final int REQUEST_TIMEOUT_MS_DEFAULT = 30000;
+    public static final int MAX_BLOCK_MS_DEFAULT = 60000;
+
 }

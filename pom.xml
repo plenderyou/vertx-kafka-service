@@ -42,7 +42,7 @@
         <arguments />
 
         <!-- Dependency Versions -->
-        <kafka.version>0.8.2.2</kafka.version>
+        <kafka.version>0.9.0.1</kafka.version>
         <vertx.version>3.2.1</vertx.version>
         <guava.version>19.0</guava.version>
         <metrics-core.version>2.2.0</metrics-core.version>
@@ -105,7 +105,7 @@
         <!-- Other dependencies -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_2.10</artifactId>
+            <artifactId>kafka-clients</artifactId>
             <version>${kafka.version}</version>
         </dependency>
         <dependency>
@@ -148,6 +148,12 @@
             <artifactId>kafka_2.10</artifactId>
             <version>${kafka.version}</version>
             <classifier>test</classifier>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka_2.10</artifactId>
+            <version>${kafka.version}</version>
             <scope>test</scope>
         </dependency>
 

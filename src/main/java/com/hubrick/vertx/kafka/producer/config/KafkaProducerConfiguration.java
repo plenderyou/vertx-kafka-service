@@ -15,6 +15,7 @@
  */
 package com.hubrick.vertx.kafka.producer.config;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
@@ -24,32 +25,45 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class KafkaProducerConfiguration {
 
     private final String defaultTopic;
-    private final String brokerList;
-    private final Integer requestAcks;
+    private final String bootstrapServers;
+    private final String acks;
+    private final int retries;
+    private final int requestTimeoutMs;
+    private final int maxBlockTimeMs;
     private StatsDConfiguration statsDConfiguration;
 
     public KafkaProducerConfiguration(String defaultTopic,
-                                      String brokerList,
-                                      Integer requestAcks) {
+                                      String bootstrapServers,
+                                      String acks,
+                                      int retries,
+                                      int requestTimeoutMs,
+                                      int maxBlockTimeMs) {
         checkNotNull(defaultTopic, "defaultTopic must not be null");
-        checkNotNull(brokerList, "brokerList must not be null");
-        checkNotNull(requestAcks, "requestAcks must not be null");
+        checkNotNull(bootstrapServers, "bootstrapServers must not be null");
+        checkNotNull(acks, "acks must not be null");
+        checkArgument(retries >= 0, "retries must be positive");
+        checkArgument(requestTimeoutMs > 0, "requestTimeoutMs timeout must be larger than zero");
+        checkArgument(maxBlockTimeMs > 0, "maxBlockTimeMs timeout must be larger than zero");
+
 
         this.defaultTopic = defaultTopic;
-        this.brokerList = brokerList;
-        this.requestAcks = requestAcks;
+        this.bootstrapServers = bootstrapServers;
+        this.acks = acks;
+        this.retries = retries;
+        this.requestTimeoutMs = requestTimeoutMs;
+        this.maxBlockTimeMs = maxBlockTimeMs;
     }
 
     public String getDefaultTopic() {
         return defaultTopic;
     }
 
-    public String getBrokerList() {
-        return brokerList;
+    public String getBootstrapServers() {
+        return bootstrapServers;
     }
 
-    public Integer getRequestAcks() {
-        return requestAcks;
+    public String getAcks() {
+        return acks;
     }
 
     public StatsDConfiguration getStatsDConfiguration() {
@@ -58,5 +72,17 @@ public class KafkaProducerConfiguration {
 
     public void setStatsDConfiguration(StatsDConfiguration statsDConfiguration) {
         this.statsDConfiguration = statsDConfiguration;
+    }
+
+    public int getRetries() {
+        return retries;
+    }
+
+    public int getRequestTimeoutMs() {
+        return requestTimeoutMs;
+    }
+
+    public int getMaxBlockTimeMs() {
+        return maxBlockTimeMs;
     }
 }

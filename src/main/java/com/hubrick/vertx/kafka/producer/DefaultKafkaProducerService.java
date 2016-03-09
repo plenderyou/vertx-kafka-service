@@ -27,9 +27,11 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
-import kafka.javaapi.producer.Producer;
-import kafka.producer.KeyedMessage;
-import kafka.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,11 +102,19 @@ public class DefaultKafkaProducerService implements KafkaProducerService {
 
             long startTime = System.currentTimeMillis();
             final Producer producer = getOrCreateProducer(messageSerializerType);
-            producer.send(new KeyedMessage<>(topic, partKey, payload));
-            statsDClient.recordExecutionTime("submitted", (System.currentTimeMillis() - startTime));
+            producer.send(new ProducerRecord(topic, partKey, payload), (metadata, exception) -> {
+                if (exception != null) {
+                    log.error("Failed to send message to Kafka broker...", exception);
+                    sendError(resultHandler, exception);
+                }
 
-            sendOK(resultHandler);
-            log.info("Message sent to kafka topic: {}. Payload: {}", topic, payload);
+                if (metadata != null) {
+                    statsDClient.recordExecutionTime("submitted", (System.currentTimeMillis() - startTime));
+
+                    sendOK(resultHandler);
+                    log.info("Message sent to kafka topic: {}. Payload: {}", topic, payload);
+                }
+            } );
         } catch (Throwable t) {
             log.error("Failed to send message to Kafka broker...", t);
             sendError(resultHandler, t);
@@ -119,12 +129,15 @@ public class DefaultKafkaProducerService implements KafkaProducerService {
     private Producer getOrCreateProducer(MessageSerializerType messageSerializerType) {
         if (producers.get(messageSerializerType) == null) {
             final Properties props = new Properties();
-            props.put("metadata.broker.list", kafkaProducerConfiguration.getBrokerList());
-            props.put("serializer.class", messageSerializerType.getValue());
-            props.put("request.required.acks", String.valueOf(kafkaProducerConfiguration.getRequestAcks()));
-            props.put("key.serializer.class", "kafka.serializer.StringEncoder");     // always use String serializer for the key
+            props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaProducerConfiguration.getBootstrapServers());
+            props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, messageSerializerType.getValue());
+            props.put(ProducerConfig.ACKS_CONFIG, String.valueOf(kafkaProducerConfiguration.getAcks()));
+            props.put(ProducerConfig.RETRIES_CONFIG, kafkaProducerConfiguration.getRetries());
+            props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, kafkaProducerConfiguration.getRequestTimeoutMs());
+            props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName()); // always use String serializer for the key
+            props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, kafkaProducerConfiguration.getMaxBlockTimeMs());
 
-            producers.put(messageSerializerType, new Producer(new ProducerConfig(props)));
+            producers.put(messageSerializerType, new KafkaProducer(props));
         }
 
         return producers.get(messageSerializerType);
