@@ -26,6 +26,7 @@ public final class KafkaConsumerProperties {
     private KafkaConsumerProperties() {}
 
     public static final String KEY_VERTX_ADDRESS = "address";
+
     public static final String KEY_GROUP_ID = "groupId";
     public static final String KEY_KAFKA_TOPIC = "kafkaTopic";
     public static final String KEY_ZOOKEEPER = "zk";
@@ -38,4 +39,5 @@ public final class KafkaConsumerProperties {
     public static final String KEY_MAX_RETRIES = "maxRetries";
     public static final String KEY_INITIAL_RETRY_DELAY_SECONDS = "initialRetryDelaySeconds";
     public static final String KEY_MAX_RETRY_DELAY_SECONDS = "maxRetryDelaySeconds";
+    public static final String EVENT_BUS_SEND_TIMEOUT = "eventBusSendTimeout";
 }
