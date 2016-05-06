@@ -41,7 +41,7 @@ Service id: com.hubrick.services.kafka-consumer
     {
       "address" : "message-from-kafka",
       "groupId" : "groupId",
-      "kafkaTopic" : "kafka-topic",
+      "kafkaTopicRegex" : "kafka-topic",
       "zk" : "host:port",
       "offsetReset" : "largest",
       "maxUnacknowledged" : 100,
@@ -56,7 +56,7 @@ Service id: com.hubrick.services.kafka-consumer
 
 * `address`: Vert.x event bus address the Kafka messages are relayed to (Required)
 * `groupId`: Kafka Group Id to use for the Kafka consumer (Required)
-* `kafkaTopic`: The Kafka topic to subscribe to (Required)
+* `kafkaTopicRegex`: The Kafka topic to subscribe to (Required)
 * `zk`: Zookeeper host and port (Required)
 * `offsetReset`: What to do when there is no initial offset in ZooKeeper or if an offset is out of range (Default: largest)
 * `maxUnacknowledged`: how many messages from Kafka can be unacknowledged before the module waits for all missing acknowledgements, effectively limiting the amount of messages that are on the Vertx Event Bus at any given time. (Default: 100)

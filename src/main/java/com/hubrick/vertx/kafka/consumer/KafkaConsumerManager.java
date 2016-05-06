@@ -17,35 +17,36 @@ package com.hubrick.vertx.kafka.consumer;
 
 import com.google.common.math.IntMath;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.hubrick.vertx.kafka.commitstrategy.CommitStrategy;
 import com.hubrick.vertx.kafka.consumer.config.KafkaConsumerConfiguration;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Phaser;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 
 /**
  * @author Marcus Thiesen
  * @since 1.0.0
  */
-class KafkaConsumerManager {
+public class KafkaConsumerManager {
 
     private final static Logger LOG = LoggerFactory.getLogger(KafkaConsumerManager.class);
 
@@ -59,30 +60,27 @@ class KafkaConsumerManager {
     private final KafkaConsumer<String,String> consumer;
     private final KafkaConsumerConfiguration configuration;
     private final KafkaConsumerHandler handler;
-    private final Set<Long> unacknowledgedOffsets = Collections.newSetFromMap(new ConcurrentHashMap<Long, Boolean>());
     private final ExecutorService messageProcessorExececutor = Executors.newSingleThreadExecutor(FACTORY);
-    private final Phaser phaser = new Phaser() {
-        @Override
-        protected boolean onAdvance(int phase, int registeredParties) {
-            LOG.debug("Advance: Phase {}, registeredParties {}", phase, registeredParties);
-            return false;
-        }
-    };
-    private final AtomicLong lastCommittedOffset = new AtomicLong();
-    private final AtomicLong currentPartition = new AtomicLong(-1);
-    private final AtomicLong lastCommitTime = new AtomicLong(System.currentTimeMillis());
+    private final CommitStrategy<String, String> commitStrategy;
+    private final KafkaConsumerFailedHandler failHander;
 
-    public KafkaConsumerManager(Vertx vertx, KafkaConsumer<String,String> consumer, KafkaConsumerConfiguration configuration, KafkaConsumerHandler handler) {
+    public KafkaConsumerManager(Vertx vertx, KafkaConsumer<String,String> consumer, KafkaConsumerConfiguration configuration, KafkaConsumerHandler handler, final KafkaConsumerFailedHandler failHandler, final Function<KafkaConsumerManager, CommitStrategy<String, String>> commitStrategyFunction) {
         this.vertx = vertx;
         this.consumer = consumer;
         this.configuration = configuration;
         this.handler = handler;
+        this.failHander = failHandler;
+        commitStrategy = commitStrategyFunction.apply(this);
     }
 
-    public static KafkaConsumerManager create(final Vertx vertx, final KafkaConsumerConfiguration configuration, final KafkaConsumerHandler handler) {
+    public static KafkaConsumerManager create(final Vertx vertx, final KafkaConsumerConfiguration configuration, final KafkaConsumerHandler handler, final Function<KafkaConsumerManager, CommitStrategy<String, String>> commitStrategyFunction) {
+        return create(vertx, configuration, handler, null, commitStrategyFunction);
+    }
+
+    public static KafkaConsumerManager create(final Vertx vertx, final KafkaConsumerConfiguration configuration, final KafkaConsumerHandler handler, final KafkaConsumerFailedHandler failHandler,  final Function<KafkaConsumerManager, CommitStrategy<String, String>> commitStrategyFunction) {
         final Properties properties = createProperties(configuration);
         final KafkaConsumer consumer = new KafkaConsumer(properties, new StringDeserializer(), new StringDeserializer());
-        return new KafkaConsumerManager(vertx, consumer, configuration, handler);
+        return new KafkaConsumerManager(vertx, consumer, configuration, handler, failHandler,  commitStrategyFunction);
     }
 
     protected static Properties createProperties(KafkaConsumerConfiguration configuration) {
@@ -104,8 +102,20 @@ class KafkaConsumerManager {
     }
 
     public void start() {
-        final String kafkaTopic = configuration.getKafkaTopic();
-        consumer.subscribe(Collections.singletonList(kafkaTopic));
+
+        final String kafkaTopicRegex = configuration.getKafkaTopicRegex();
+        consumer.subscribe(Pattern.compile(kafkaTopicRegex), new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(final Collection<TopicPartition> partitions) {
+                LOG.warn("onPartitionsRevoked: has been called");
+                commitStrategy.forceCommit(partitions);
+            }
+
+            @Override
+            public void onPartitionsAssigned(final Collection<TopicPartition> partitions) {
+                LOG.warn("onPartitionsAssigned: has bee called");
+            }
+        });
 
         messageProcessorExececutor.submit(() -> read());
     }
@@ -116,66 +126,38 @@ class KafkaConsumerManager {
             final Iterator<ConsumerRecord<String, String>> iterator = records.iterator();
             while (iterator.hasNext()) {
 
-                final int phase = phaser.register();
 
                 final ConsumerRecord<String, String> msg = iterator.next();
-                final long offset = msg.offset();
-                final long partition = msg.partition();
-                unacknowledgedOffsets.add(offset);
-                lastCommittedOffset.compareAndSet(0, offset);
-                currentPartition.compareAndSet(-1, partition);
-
-                handle(msg.value(), offset, configuration.getMaxRetries(), configuration.getInitialRetryDelaySeconds());
-
-                if (unacknowledgedOffsets.size() >= configuration.getMaxUnacknowledged()
-                        || partititionChanged(partition)
-                        || tooManyUncommittedOffsets(offset)
-                        || commitTimeoutReached()) {
-                    LOG.info("Got {} unacknowledged messages, waiting for ACKs in order to commit", unacknowledgedOffsets.size());
-                    if (!waitForAcks(phase)) {
-                        return;
-                    }
-                    commitOffsetsIfAllAcknowledged(offset);
-                    LOG.info("Continuing message processing");
-                }
-            }
+                handle(msg, configuration.getMaxRetries(), configuration.getInitialRetryDelaySeconds());
+        }
         }
     }
 
-    private void handle(String msg, Long offset, int tries, int delaySeconds) {
+    private void handle(final ConsumerRecord<String, String> msg, int tries, int delaySeconds) {
         final Future<Void> futureResult = Future.future();
+        final TopicPartition topicPartition = new TopicPartition(msg.topic(), msg.partition());
         futureResult.setHandler(result -> {
             if(result.succeeded()) {
-                unacknowledgedOffsets.remove(offset);
-                phaser.arriveAndDeregister();
+                commitStrategy.messageHandled(topicPartition, msg.offset());
             } else {
                 final int nextDelaySeconds = computeNextDelay(delaySeconds);
                 if (tries > 0) {
                     LOG.error("Exception occurred during kafka message processing, will retry in {} seconds: {}", delaySeconds, msg, result.cause());
                     final int nextTry = tries - 1;
-                    vertx.setTimer(delaySeconds * 1000, event -> handle(msg, offset, nextTry, nextDelaySeconds));
+                    vertx.setTimer(delaySeconds * 1000, event -> handle(msg, nextTry, nextDelaySeconds));
                 } else {
                     LOG.error("Exception occurred during kafka message processing. Max number of retries reached. Skipping message: {}", msg, result.cause());
-                    unacknowledgedOffsets.remove(offset);
-                    phaser.arriveAndDeregister();
+                    commitStrategy.messageHandled(topicPartition, msg.offset());
+                    if( failHander != null ) {
+                        failHander.handle(msg);
+                    }
                 }
             }
         });
         handler.handle(msg, futureResult);
     }
 
-    private boolean commitTimeoutReached() {
-        return System.currentTimeMillis() - lastCommitTime.get() >= configuration.getCommitTimeoutMs();
-    }
 
-    private boolean partititionChanged(long partition) {
-        if (currentPartition.get() != partition) {
-            LOG.info("Partition changed from {} to {}", currentPartition.get(), partition);
-            currentPartition.set(partition);
-            return true;
-        }
-        return false;
-    }
 
     private int computeNextDelay(int delaySeconds) {
         try {
@@ -185,33 +167,7 @@ class KafkaConsumerManager {
         }
     }
 
-    private boolean waitForAcks(int phase) {
-        try {
-            phaser.awaitAdvanceInterruptibly(phase, configuration.getAckTimeoutSeconds(), TimeUnit.SECONDS);
-            return true;
-        } catch (InterruptedException e) {
-            LOG.error("Interrupted while waiting for ACKs", e);
-            return false;
-        } catch (TimeoutException e) {
-            LOG.error("Waited for {} ACKs for longer than {} seconds, not making any progress ({}/{})", new Object[]{
-                    Integer.valueOf(unacknowledgedOffsets.size()), Long.valueOf(configuration.getAckTimeoutSeconds()),
-                    Integer.valueOf(phase), Integer.valueOf(phaser.getPhase())});
-            return waitForAcks(phase);
-        }
-    }
-
-    private boolean tooManyUncommittedOffsets(final long offset) {
-        return lastCommittedOffset.get() + configuration.getMaxUncommitedOffsets() <= offset;
-    }
-
-    private void commitOffsetsIfAllAcknowledged(final long currentOffset) {
-        if (unacknowledgedOffsets.isEmpty()) {
-            LOG.info("Committing at offset {}", currentOffset);
-            consumer.commitSync();
-            lastCommittedOffset.set(currentOffset);
-            lastCommitTime.set(System.currentTimeMillis());
-        } else {
-            LOG.warn("Can not commit because {} ACKs missing", unacknowledgedOffsets.size());
-        }
+    public void commit(final Map<TopicPartition, OffsetAndMetadata> partitionMap) {
+        consumer.commitSync(partitionMap);
     }
 }

@@ -16,7 +16,6 @@
 package com.hubrick.vertx.kafka.consumer;
 
 
-import io.vertx.core.Future;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
@@ -26,6 +25,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @since 1.0.0
  */
 @FunctionalInterface
-interface KafkaConsumerHandler {
-    void handle(final ConsumerRecord<String, String> message, final Future<Void> futureResult);
+interface KafkaConsumerFailedHandler {
+    void handle(final ConsumerRecord<String, String> message);
 }

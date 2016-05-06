@@ -16,12 +16,15 @@
 package com.hubrick.vertx.kafka.consumer;
 
 import com.google.common.base.Strings;
+import com.hubrick.vertx.kafka.commitstrategy.CommitStrategy;
+import com.hubrick.vertx.kafka.commitstrategy.TimeBasedCommitStrategy;
 import com.hubrick.vertx.kafka.consumer.config.KafkaConsumerConfiguration;
 import com.hubrick.vertx.kafka.consumer.property.KafkaConsumerProperties;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.json.JsonObject;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
  * Vert.x Module to read from a Kafka Topic.
@@ -43,23 +46,23 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
         vertxAddress = getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_VERTX_ADDRESS);
 
         configuration = KafkaConsumerConfiguration.create(
-                getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_GROUP_ID),
-                getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_CLIENT_ID),
-                getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_KAFKA_TOPIC),
-                getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_BOOTSTRAP_SERVERS),
-                config.getString(KafkaConsumerProperties.KEY_OFFSET_RESET, "latest"),
-                config.getInteger(KafkaConsumerProperties.KEY_MAX_UNACKNOWLEDGED, 100),
-                config.getLong(KafkaConsumerProperties.KEY_MAX_UNCOMMITTED_OFFSETS, 1000L),
-                config.getLong(KafkaConsumerProperties.KEY_ACK_TIMEOUT_SECONDS, 600L),
-                config.getLong(KafkaConsumerProperties.KEY_COMMIT_TIMEOUT_MS, 5 * 60 * 1000L),
-                config.getInteger(KafkaConsumerProperties.KEY_MAX_RETRIES, Integer.MAX_VALUE),
-                config.getInteger(KafkaConsumerProperties.KEY_INITIAL_RETRY_DELAY_SECONDS, 1),
-                config.getInteger(KafkaConsumerProperties.KEY_MAX_RETRY_DELAY_SECONDS, 10),
-                config.getLong(KafkaConsumerProperties.EVENT_BUS_SEND_TIMEOUT, DeliveryOptions.DEFAULT_TIMEOUT)
+            getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_GROUP_ID),
+            getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_CLIENT_ID),
+            getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_KAFKA_TOPIC),
+            getMandatoryStringConfig(config, KafkaConsumerProperties.KEY_BOOTSTRAP_SERVERS),
+            config.getString(KafkaConsumerProperties.KEY_OFFSET_RESET, "latest"),
+            config.getInteger(KafkaConsumerProperties.KEY_MAX_RETRIES, Integer.MAX_VALUE),
+            config.getInteger(KafkaConsumerProperties.KEY_INITIAL_RETRY_DELAY_SECONDS, 1),
+            config.getInteger(KafkaConsumerProperties.KEY_MAX_RETRY_DELAY_SECONDS, 10),
+            config.getLong(KafkaConsumerProperties.EVENT_BUS_SEND_TIMEOUT, DeliveryOptions.DEFAULT_TIMEOUT)
         );
 
-        consumer = KafkaConsumerManager.create(vertx, configuration, this::handler);
-        consumer.start();
+        consumer = KafkaConsumerManager.create(vertx, configuration, this::handler, this::createCommitStrategy);
+      consumer.start();
+    }
+
+    private CommitStrategy<String, String> createCommitStrategy(final KafkaConsumerManager kafkaConsumerManager) {
+        return new TimeBasedCommitStrategy<>(vertx, kafkaConsumerManager, 1000, 30000);
     }
 
     private String getMandatoryStringConfig(final JsonObject jsonObject, final String key) {
@@ -70,11 +73,11 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
         return value;
     }
 
-    private void handler(final String message, final Future<Void> futureResult) {
+    private void handler(final ConsumerRecord<String, String> message, final Future<Void> futureResult) {
         final DeliveryOptions options = new DeliveryOptions();
         options.setSendTimeout(configuration.getEventBusSendTimeout());
 
-        vertx.eventBus().send(vertxAddress, message, (result) -> {
+        vertx.eventBus().send(vertxAddress, message, options, (result) -> {
             if (result.succeeded()) {
                 futureResult.complete();
             } else {

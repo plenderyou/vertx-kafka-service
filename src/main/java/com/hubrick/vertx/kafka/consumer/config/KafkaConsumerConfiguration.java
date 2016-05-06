@@ -25,13 +25,9 @@ public class KafkaConsumerConfiguration {
 
     private final String clientId;
     private final String groupId;
-    private final String kafkaTopic;
+    private final String kafkaTopicRegex;
     private final String bootstrapServers;
     private final String offsetReset;
-    private final int maxUnacknowledged;
-    private final long maxUncommitedOffsets;
-    private final long ackTimeoutSeconds;
-    private final long commitTimeoutMs;
     private final int maxRetries;
     private final int initialRetryDelaySeconds;
     private final int maxRetryDelaySeconds;
@@ -39,26 +35,18 @@ public class KafkaConsumerConfiguration {
 
     private KafkaConsumerConfiguration(final String groupId,
                                        final String clientId,
-                                       final String kafkaTopic,
+                                       final String kafkaTopicRegex,
                                        final String bootstrapServers,
                                        final String offsetReset,
-                                       final int maxUnacknowledged,
-                                       final long maxUncommittedOffset,
-                                       final long ackTimeoutSeconds,
-                                       final long commitTimeoutMs,
                                        final int maxRetries,
                                        final int initialRetryDelaySeconds,
                                        final int maxRetryDelaySeconds,
                                        final long eventBusSendTimeout) {
         this.clientId = clientId;
         this.groupId = groupId;
-        this.kafkaTopic = kafkaTopic;
+        this.kafkaTopicRegex = kafkaTopicRegex;
         this.bootstrapServers = bootstrapServers;
         this.offsetReset = offsetReset;
-        this.maxUnacknowledged = maxUnacknowledged;
-        this.maxUncommitedOffsets = maxUncommittedOffset;
-        this.ackTimeoutSeconds = ackTimeoutSeconds;
-        this.commitTimeoutMs = commitTimeoutMs;
         this.maxRetries = maxRetries;
         this.initialRetryDelaySeconds = initialRetryDelaySeconds;
         this.maxRetryDelaySeconds = maxRetryDelaySeconds;
@@ -70,10 +58,6 @@ public class KafkaConsumerConfiguration {
                                                     final String kafkaTopic,
                                                     final String bootstrapServers,
                                                     final String offsetReset,
-                                                    final int maxUnacknowledged,
-                                                    final long maxUncommittedOffsets,
-                                                    final long ackTimeoutSeconds,
-                                                    final long commitTimeoutMs,
                                                     final int maxRetries,
                                                     final int initialRetryDelaySeconds,
                                                     final int maxRetryDelaySeconds,
@@ -84,10 +68,6 @@ public class KafkaConsumerConfiguration {
                 kafkaTopic,
                 bootstrapServers,
                 offsetReset,
-                maxUnacknowledged,
-                maxUncommittedOffsets,
-                ackTimeoutSeconds,
-                commitTimeoutMs,
                 maxRetries,
                 initialRetryDelaySeconds,
                 maxRetryDelaySeconds,
@@ -98,28 +78,12 @@ public class KafkaConsumerConfiguration {
         return groupId;
     }
 
-    public String getKafkaTopic() {
-        return kafkaTopic;
+    public String getKafkaTopicRegex() {
+        return kafkaTopicRegex;
     }
 
     public String getOffsetReset() {
         return offsetReset;
-    }
-
-    public int getMaxUnacknowledged() {
-        return maxUnacknowledged;
-    }
-
-    public long getMaxUncommitedOffsets() {
-        return maxUncommitedOffsets;
-    }
-
-    public long getAckTimeoutSeconds() {
-        return ackTimeoutSeconds;
-    }
-
-    public long getCommitTimeoutMs() {
-        return commitTimeoutMs;
     }
 
     public int getMaxRetryDelaySeconds() {
